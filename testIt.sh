@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOGFILE="/var/log/pro_install.log"
+LOGFILE="$HOME/.pro_install.log"
 
 RED="\033[1;31m"
 GREEN="\033[1;32m"
@@ -174,6 +174,57 @@ check_service() {
         || set_result "$2" "ERROR"
 }
 
+# ================= INSTALLATION STATUS CHECK =================
+
+check_installed_packages() {
+    clear
+    echo ""
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo -e "${CYAN}║${NC}   ${MAGENTA}INSTALLATION STATUS CHECK${NC}    ${CYAN}║${NC}"
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo ""
+    
+    packages=(
+        "apache2:Apache Web Server"
+        "php:PHP"
+        "openssh-server:SSH Server"
+        "mosquitto:Mosquitto MQTT"
+        "mariadb-server:MariaDB Database"
+        "docker.io:Docker"
+        "nodejs:Node.js"
+        "ufw:UFW Firewall"
+        "fail2ban:Fail2Ban"
+        "phpmyadmin:phpMyAdmin"
+    )
+    
+    installed_count=0
+    not_installed_count=0
+    
+    for package_info in "${packages[@]}"; do
+        package="${package_info%%:*}"
+        name="${package_info##*:}"
+        
+        if is_installed "$package"; then
+            echo -e "  ${GREEN}✓${NC} $name"
+            ((installed_count++))
+        else
+            echo -e "  ${RED}✗${NC} $name"
+            ((not_installed_count++))
+        fi
+    done
+    
+    echo ""
+    echo -e "${GREEN}Installed: $installed_count${NC}"
+    echo -e "${RED}Not Installed: $not_installed_count${NC}"
+    echo ""
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}  Press ${GREEN}Enter${NC} to return to menu...     ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
+    read -r
+}
+
 # ================= INSTALL FUNCTIONS =================
 
 install_apache() {
@@ -181,34 +232,52 @@ install_apache() {
     if ! is_installed apache2; then
         apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
         runner $! "Apache Installation"
+    else
+        echo -e "${YELLOW}Apache already installed${NC}"
     fi
     systemctl enable --now apache2 >> "$LOGFILE" 2>&1 || true
 }
 
 install_php() {
     echo -e "${GREEN}Installing PHP...${NC}"
-    apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
-    runner $! "PHP Installation"
+    if ! is_installed php; then
+        apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
+        runner $! "PHP Installation"
+    else
+        echo -e "${YELLOW}PHP already installed${NC}"
+    fi
 }
 
 install_ssh() {
     echo -e "${GREEN}Installing SSH...${NC}"
-    apt install -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $! "SSH Installation"
+    if ! is_installed openssh-server; then
+        apt install -y openssh-server >> "$LOGFILE" 2>&1 &
+        runner $! "SSH Installation"
+    else
+        echo -e "${YELLOW}SSH already installed${NC}"
+    fi
     systemctl enable --now ssh >> "$LOGFILE" 2>&1 || true
 }
 
 install_mosquitto() {
     echo -e "${GREEN}Installing Mosquitto...${NC}"
-    apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $! "Mosquitto Installation"
+    if ! is_installed mosquitto; then
+        apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
+        runner $! "Mosquitto Installation"
+    else
+        echo -e "${YELLOW}Mosquitto already installed${NC}"
+    fi
     systemctl enable --now mosquitto >> "$LOGFILE" 2>&1 || true
 }
 
 install_mariadb() {
     echo -e "${GREEN}Installing MariaDB...${NC}"
-    apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $! "MariaDB Installation"
+    if ! is_installed mariadb-server; then
+        apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
+        runner $! "MariaDB Installation"
+    else
+        echo -e "${YELLOW}MariaDB already installed${NC}"
+    fi
     systemctl enable --now mariadb >> "$LOGFILE" 2>&1 || true
 
     echo "Database configuration:"
@@ -234,14 +303,22 @@ install_node_red() {
 
 install_phpmyadmin() {
     echo -e "${GREEN}Installing phpMyAdmin...${NC}"
-    apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $! "phpMyAdmin Installation"
+    if ! is_installed phpmyadmin; then
+        apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
+        runner $! "phpMyAdmin Installation"
+    else
+        echo -e "${YELLOW}phpMyAdmin already installed${NC}"
+    fi
 }
 
 install_docker() {
     echo -e "${GREEN}Installing Docker...${NC}"
-    apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $! "Docker Installation"
+    if ! is_installed docker.io; then
+        apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
+        runner $! "Docker Installation"
+    else
+        echo -e "${YELLOW}Docker already installed${NC}"
+    fi
     systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
 }
 
@@ -249,6 +326,13 @@ install_security() {
     echo -e "${GREEN}Installing UFW + Fail2Ban...${NC}"
     apt install -y ufw fail2ban >> "$LOGFILE" 2>&1 &
     runner $! "Security Setup"
+
+    # Check if ufw is installed
+    if ! command -v ufw &> /dev/null; then
+        echo -e "${RED}[✗] UFW installation failed - command not found${NC}"
+        log "ERROR: UFW command not found after installation"
+        return 1
+    fi
 
     ufw default deny incoming || true
     ufw default allow outgoing || true
@@ -278,6 +362,7 @@ show_menu() {
     echo -e "${YELLOW}6)${NC} Docker"
     echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)"
     echo -e "${YELLOW}8)${NC} System Update"
+    echo -e "${YELLOW}9)${NC} Check Installation Status"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -299,6 +384,7 @@ show_menu() {
             6) install_docker ;;
             7) install_security ;;
             8) echo -e "${BLUE}Updating system...${NC}"; apt update >> "$LOGFILE" 2>&1 & runner $! "System Update" ;;
+            9) check_installed_packages ;;
             0) return 0 ;;
             *) echo -e "${RED}Invalid option: $choice${NC}"; sleep 2 ;;
         esac
