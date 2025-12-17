@@ -38,16 +38,18 @@ ask_yes_no() {
     done
 }
 
+# ================= TELEPÍTÉS / TÖRLÉS VÁLASZTÁS =================
+
 ask_action() {
     while true; do
         echo ""
         echo -e "${CYAN}Válassz műveletet:${NC}"
         echo -e "${GREEN}1) Telepítés${NC}"
         echo -e "${RED}2) Törlés${NC}"
-        read -rp "Choice (1/2): " action
-        case $action in
-            1) echo "install"; return 0 ;;
-            2) echo "remove"; return 0 ;;
+        read -rp "Choice (1/2): " choice
+        case $choice in
+            1) ACTION="install"; return 0 ;;
+            2) ACTION="remove"; return 0 ;;
             *) echo -e "${RED}Csak 1 vagy 2 lehet!${NC}" ;;
         esac
     done
@@ -325,14 +327,14 @@ show_menu() {
     fi
 
     for choice in $choices; do
-        action=$(ask_action)
+        ask_action
 
         case $choice in
             1)
-                [[ $action == "install" ]] && install_node_red || remove_nodered
+                [[ $ACTION == "install" ]] && install_node_red || remove_nodered
             ;;
             2)
-                if [[ $action == "install" ]]; then
+                if [[ $ACTION == "install" ]]; then
                     install_apache
                     install_php
                     ask_yes_no "Install MariaDB too?" && install_mariadb
@@ -343,13 +345,13 @@ show_menu() {
                 fi
             ;;
             3)
-                [[ $action == "install" ]] && install_mosquitto || remove_mosquitto
+                [[ $ACTION == "install" ]] && install_mosquitto || remove_mosquitto
             ;;
             4)
-                [[ $action == "install" ]] && install_ssh || remove_ssh
+                [[ $ACTION == "install" ]] && install_ssh || remove_ssh
             ;;
             5)
-                if [[ $action == "install" ]]; then
+                if [[ $ACTION == "install" ]]; then
                     install_apache
                     install_php
                     install_phpmyadmin
@@ -358,13 +360,13 @@ show_menu() {
                 fi
             ;;
             6)
-                [[ $action == "install" ]] && install_docker || remove_docker
+                [[ $ACTION == "install" ]] && install_docker || remove_docker
             ;;
             7)
-                [[ $action == "install" ]] && install_security || remove_security
+                [[ $ACTION == "install" ]] && install_security || remove_security
             ;;
             8)
-                if [[ $action == "install" ]]; then
+                if [[ $ACTION == "install" ]]; then
                     echo -e "${BLUE}Updating system...${NC}"
                     apt update >> "$LOGFILE" 2>&1 &
                     runner $! "System Update"
@@ -438,5 +440,6 @@ echo -e "${YELLOW}Note:${NC} Firewall recommended for open services."
 echo ""
 
 log "Script completed successfully"
+
 
 
