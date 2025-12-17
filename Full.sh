@@ -311,10 +311,11 @@ show_menu() {
     echo -e "${YELLOW}2)${NC} Apache + PHP             (később: Telepítés / Törlés)"
     echo -e "${YELLOW}3)${NC} Mosquitto MQTT           (később: Telepítés / Törlés)"
     echo -e "${YELLOW}4)${NC} SSH                      (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}5)${NC} phpMyAdmin               (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}6)${NC} Docker                   (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)(később: Telepítés / Törlés)"
-    echo -e "${YELLOW}8)${NC} System Update            (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}5)${NC} MariaDB                   (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}6)${NC} phpMyAdmin               (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}7)${NC} Docker                   (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}8)${NC} Security (UFW + Fail2Ban)(később: Telepítés / Törlés)"
+    echo -e "${YELLOW}9)${NC} System Update            (később: Telepítés)"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -327,22 +328,18 @@ show_menu() {
     fi
 
     for choice in $choices; do
-        ask_action
+        if [[ $choice -ne 9 ]]; then
+            ask_action
+        else
+            ACTION="install"  # System update csak telepítés
+        fi
 
         case $choice in
             1)
                 [[ $ACTION == "install" ]] && install_node_red || remove_nodered
             ;;
             2)
-                if [[ $ACTION == "install" ]]; then
-                    install_apache
-                    install_php
-                    ask_yes_no "Install MariaDB too?" && install_mariadb
-                else
-                    remove_mariadb
-                    remove_php
-                    remove_apache
-                fi
+                [[ $ACTION == "install" ]] && { install_apache; install_php; } || { remove_php; remove_apache; }
             ;;
             3)
                 [[ $ACTION == "install" ]] && install_mosquitto || remove_mosquitto
@@ -351,29 +348,21 @@ show_menu() {
                 [[ $ACTION == "install" ]] && install_ssh || remove_ssh
             ;;
             5)
-                if [[ $ACTION == "install" ]]; then
-                    install_apache
-                    install_php
-                    install_phpmyadmin
-                else
-                    remove_phpmyadmin
-                fi
+                [[ $ACTION == "install" ]] && install_mariadb || remove_mariadb
             ;;
             6)
-                [[ $ACTION == "install" ]] && install_docker || remove_docker
+                [[ $ACTION == "install" ]] && install_phpmyadmin || remove_phpmyadmin
             ;;
             7)
-                [[ $ACTION == "install" ]] && install_security || remove_security
+                [[ $ACTION == "install" ]] && install_docker || remove_docker
             ;;
             8)
-                if [[ $ACTION == "install" ]]; then
-                    echo -e "${BLUE}Updating system...${NC}"
-                    apt update >> "$LOGFILE" 2>&1 &
-                    runner $! "System Update"
-                else
-                    echo -e "${YELLOW}System update cannot be removed.${NC}"
-                    sleep 2
-                fi
+                [[ $ACTION == "install" ]] && install_security || remove_security
+            ;;
+            9)
+                echo -e "${BLUE}Updating system...${NC}"
+                apt update >> "$LOGFILE" 2>&1 &
+                runner $! "System Update"
             ;;
             0) return 0 ;;
             *)
@@ -440,6 +429,3 @@ echo -e "${YELLOW}Note:${NC} Firewall recommended for open services."
 echo ""
 
 log "Script completed successfully"
-
-
-
