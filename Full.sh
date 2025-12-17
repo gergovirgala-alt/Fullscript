@@ -307,15 +307,15 @@ show_menu() {
     echo -e "${CYAN}║${NC}    ${MAGENTA}DEBIAN INSTALLER MENU${NC}    ${CYAN}║${NC}"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
-    echo -e "${YELLOW}1)${NC} Node-RED                 (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}2)${NC} Apache + PHP             (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}3)${NC} Mosquitto MQTT           (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}4)${NC} SSH                      (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}5)${NC} MariaDB                   (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}6)${NC} phpMyAdmin               (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}7)${NC} Docker                   (később: Telepítés / Törlés)"
-    echo -e "${YELLOW}8)${NC} Security (UFW + Fail2Ban)(később: Telepítés / Törlés)"
-    echo -e "${YELLOW}9)${NC} System Update            (később: Telepítés)"
+    echo -e "${YELLOW}1)${NC} Node-RED                 (Telepítés / Törlés)"
+    echo -e "${YELLOW}2)${NC} Apache + PHP             (Telepítés / Törlés)"
+    echo -e "${YELLOW}3)${NC} Mosquitto MQTT           (Telepítés / Törlés)"
+    echo -e "${YELLOW}4)${NC} SSH                      (Telepítés / Törlés)"
+    echo -e "${YELLOW}5)${NC} MariaDB                   (Telepítés / Törlés)"
+    echo -e "${YELLOW}6)${NC} phpMyAdmin               (Telepítés / Törlés)"
+    echo -e "${YELLOW}7)${NC} Docker                   (Telepítés / Törlés)"
+    echo -e "${YELLOW}8)${NC} Security (UFW + Fail2Ban)(Telepítés / Törlés)"
+    echo -e "${YELLOW}9)${NC} System Update            (Telepítés)"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -339,7 +339,13 @@ show_menu() {
                 [[ $ACTION == "install" ]] && install_node_red || remove_nodered
             ;;
             2)
-                [[ $ACTION == "install" ]] && { install_apache; install_php; } || { remove_php; remove_apache; }
+                if [[ $ACTION == "install" ]]; then
+                    install_apache
+                    install_php
+                else
+                    remove_apache
+                    remove_php
+                fi
             ;;
             3)
                 [[ $ACTION == "install" ]] && install_mosquitto || remove_mosquitto
