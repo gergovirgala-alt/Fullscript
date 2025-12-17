@@ -43,7 +43,7 @@ ask_action() {
         echo ""
         echo -e "${CYAN}Válassz műveletet:${NC}"
         echo -e "${GREEN}1) Telepítés${NC}"
-        echo -e "${RED}2) Eltávolítás${NC}"
+        echo -e "${RED}2) Törlés${NC}"
         read -rp "Choice (1/2): " action
         case $action in
             1) echo "install"; return 0 ;;
@@ -305,14 +305,14 @@ show_menu() {
     echo -e "${CYAN}║${NC}    ${MAGENTA}DEBIAN INSTALLER MENU${NC}    ${CYAN}║${NC}"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
-    echo -e "${YELLOW}1)${NC} Node-RED"
-    echo -e "${YELLOW}2)${NC} Apache + PHP"
-    echo -e "${YELLOW}3)${NC} Mosquitto MQTT"
-    echo -e "${YELLOW}4)${NC} SSH"
-    echo -e "${YELLOW}5)${NC} phpMyAdmin"
-    echo -e "${YELLOW}6)${NC} Docker"
-    echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)"
-    echo -e "${YELLOW}8)${NC} System Update"
+    echo -e "${YELLOW}1)${NC} Node-RED                 (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}2)${NC} Apache + PHP             (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}3)${NC} Mosquitto MQTT           (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}4)${NC} SSH                      (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}5)${NC} phpMyAdmin               (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}6)${NC} Docker                   (később: Telepítés / Törlés)"
+    echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)(később: Telepítés / Törlés)"
+    echo -e "${YELLOW}8)${NC} System Update            (később: Telepítés / Törlés)"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -438,4 +438,5 @@ echo -e "${YELLOW}Note:${NC} Firewall recommended for open services."
 echo ""
 
 log "Script completed successfully"
+
 
