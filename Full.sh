@@ -59,7 +59,7 @@ is_installed() {
     dpkg -l | grep -q "^ii  $1" || return 1
 }
 
-# ================= ENHANCED ANIMATION WITH MUSIC =================
+# ================= ENHANCED ANIMATION WITHOUT TEXT =================
 
 play_background_music() {
     for freq in 800 900 1000 900 800; do
@@ -74,7 +74,6 @@ stop_music() {
 
 runner() {
     local pid=$1
-    local message="${2:-Processing}"
     tput civis 2>/dev/null || true
 
     frames=(
@@ -121,27 +120,17 @@ runner() {
     i=0
     while kill -0 "$pid" 2>/dev/null; do
         clear
-        echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
-        echo -e "${CYAN}║${NC}     $message                ${CYAN}║${NC}"
-        echo -e "${CYAN}╚════════════════════════════════════╝${NC}\n"
         echo -e "${MAGENTA}${frames[$i]}${NC}\n"
-
         progress_char=( "█" "▓" "▒" "░" )
         progress_idx=$((i % 4))
         echo -e "${GREEN}Loading... ${progress_char[$progress_idx]}${NC}"
-
         i=$(( (i + 1) % ${#frames[@]} ))
         sleep 0.3
     done
 
     wait "$pid" || true
     stop_music
-
     clear
-    echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}    ${GREEN}[✓] Task Complete!${NC}           ${CYAN}║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
-    sleep 1
     tput cnorm 2>/dev/null || true
 }
 
@@ -160,36 +149,31 @@ check_service() {
 # ================= INSTALL FUNCTIONS =================
 
 install_apache() {
-    echo -e "${GREEN}Installing Apache...${NC}"
     apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
-    runner $! "Installing Apache..."
+    runner $!
     systemctl enable --now apache2 >> "$LOGFILE" 2>&1 || true
 }
 
 install_php() {
-    echo -e "${GREEN}Installing PHP...${NC}"
     apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
-    runner $! "Installing PHP..."
+    runner $!
 }
 
 install_ssh() {
-    echo -e "${GREEN}Installing SSH...${NC}"
     apt install -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $! "Installing SSH..."
+    runner $!
     systemctl enable --now ssh >> "$LOGFILE" 2>&1 || true
 }
 
 install_mosquitto() {
-    echo -e "${GREEN}Installing Mosquitto...${NC}"
     apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $! "Installing Mosquitto..."
+    runner $!
     systemctl enable --now mosquitto >> "$LOGFILE" 2>&1 || true
 }
 
 install_mariadb() {
-    echo -e "${GREEN}Installing MariaDB...${NC}"
     apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $! "Installing MariaDB..."
+    runner $!
     systemctl enable --now mariadb >> "$LOGFILE" 2>&1 || true
 
     echo "Database configuration:"
@@ -204,22 +188,19 @@ install_mariadb() {
 }
 
 install_phpmyadmin() {
-    echo -e "${GREEN}Installing phpMyAdmin...${NC}"
     apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $! "Installing phpMyAdmin..."
+    runner $!
 }
 
 install_docker() {
-    echo -e "${GREEN}Installing Docker...${NC}"
     apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $! "Installing Docker..."
+    runner $!
     systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
 }
 
 install_security() {
-    echo -e "${GREEN}Installing UFW + Fail2Ban...${NC}"
     apt install -y ufw fail2ban >> "$LOGFILE" 2>&1 &
-    runner $! "Setting up Security..."
+    runner $!
     ufw default deny incoming || true
     ufw default allow outgoing || true
     ufw allow 22/tcp || true
@@ -234,54 +215,54 @@ install_security() {
 remove_apache() {
     systemctl stop apache2 2>/dev/null || true
     apt purge -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
-    runner $! "Removing Apache..."
+    runner $!
 }
 
 remove_php() {
     apt purge -y php\* >> "$LOGFILE" 2>&1 &
-    runner $! "Removing PHP..."
+    runner $!
 }
 
 remove_ssh() {
     systemctl stop ssh 2>/dev/null || true
     apt purge -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $! "Removing SSH..."
+    runner $!
 }
 
 remove_mosquitto() {
     systemctl stop mosquitto 2>/dev/null || true
     apt purge -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $! "Removing Mosquitto..."
+    runner $!
 }
 
 remove_mariadb() {
     systemctl stop mariadb 2>/dev/null || true
     apt purge -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $! "Removing MariaDB..."
+    runner $!
 }
 
 remove_phpmyadmin() {
     apt purge -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $! "Removing phpMyAdmin..."
+    runner $!
 }
 
 remove_docker() {
     systemctl stop docker 2>/dev/null || true
     apt purge -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $! "Removing Docker..."
+    runner $!
 }
 
 remove_nodered() {
     systemctl stop nodered.service 2>/dev/null || true
     apt purge -y nodered nodejs >> "$LOGFILE" 2>&1 &
-    runner $! "Removing Node-RED..."
+    runner $!
 }
 
 remove_security() {
     ufw --force disable || true
     systemctl stop fail2ban 2>/dev/null || true
     apt purge -y ufw fail2ban >> "$LOGFILE" 2>&1 &
-    runner $! "Removing Security..."
+    runner $!
 }
 
 # ================= MAIN MENU LOOP =================
@@ -320,9 +301,7 @@ show_menu() {
         fi
 
         case $choice in
-            1)
-                [[ $ACTION == "install" ]] && install_node_red || remove_nodered
-            ;;
+            1) [[ $ACTION == "install" ]] && install_node_red || remove_nodered ;;
             2)
                 if [[ $ACTION == "install" ]]; then
                     install_apache
@@ -332,34 +311,18 @@ show_menu() {
                     remove_php
                 fi
             ;;
-            3)
-                [[ $ACTION == "install" ]] && install_mosquitto || remove_mosquitto
-            ;;
-            4)
-                [[ $ACTION == "install" ]] && install_ssh || remove_ssh
-            ;;
-            5)
-                [[ $ACTION == "install" ]] && install_mariadb || remove_mariadb
-            ;;
-            6)
-                [[ $ACTION == "install" ]] && install_phpmyadmin || remove_phpmyadmin
-            ;;
-            7)
-                [[ $ACTION == "install" ]] && install_docker || remove_docker
-            ;;
-            8)
-                [[ $ACTION == "install" ]] && install_security || remove_security
-            ;;
+            3) [[ $ACTION == "install" ]] && install_mosquitto || remove_mosquitto ;;
+            4) [[ $ACTION == "install" ]] && install_ssh || remove_ssh ;;
+            5) [[ $ACTION == "install" ]] && install_mariadb || remove_mariadb ;;
+            6) [[ $ACTION == "install" ]] && install_phpmyadmin || remove_phpmyadmin ;;
+            7) [[ $ACTION == "install" ]] && install_docker || remove_docker ;;
+            8) [[ $ACTION == "install" ]] && install_security || remove_security ;;
             9)
-                echo -e "${BLUE}Updating system...${NC}"
                 apt update >> "$LOGFILE" 2>&1 &
-                runner $! "Updating system..."
+                runner $!
             ;;
             0) return 0 ;;
-            *)
-                echo -e "${RED}Invalid option: $choice${NC}"
-                sleep 2
-            ;;
+            *) echo -e "${RED}Invalid option: $choice${NC}"; sleep 2 ;;
         esac
     done
     return 1
