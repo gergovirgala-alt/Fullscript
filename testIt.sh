@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOGFILE="$HOME/.pro_install.log"
+LOGFILE="/var/log/pro_install.log"
 
 RED="\033[1;31m"
 GREEN="\033[1;32m"
@@ -8,7 +8,6 @@ YELLOW="\033[1;33m"
 BLUE="\033[1;34m"
 CYAN="\033[1;36m"
 MAGENTA="\033[1;35m"
-BLACK="\033[0;30m"
 NC="\033[0m"
 
 set -Eeuo pipefail
@@ -43,9 +42,11 @@ is_installed() {
     dpkg -l | grep -q "^ii  $1" || return 1
 }
 
-# ================= MATRIX FALLING NUMBERS ANIMATION =================
+# ================= ENHANCED ANIMATION WITH MUSIC =================
 
 play_background_music() {
+    # Check if speaker-test or similar is available, or use printf for beeps
+    # This creates a simple ascending tone pattern
     for freq in 800 900 1000 900 800; do
         printf '\a' >/dev/null 2>&1 || true
         sleep 0.1
@@ -61,102 +62,72 @@ runner() {
     local message="${2:-Processing}"
     tput civis 2>/dev/null || true
 
-    # Matrix falling numbers animation
+    # Enhanced animation frames - larger and cooler
     frames=(
-"
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-"
-
-"
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-"
-
-"
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-"
-
-"
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-"
-
-"
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-"
-
-"
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-"
-
-"
-${GREEN}1 0 1 1 0 0 1 0 1 1${NC}
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-"
-
-"
-${GREEN}0 1 0 1 1 0 1 0 1 1${NC}
-${GREEN}1 1 0 1 0 1 1 0 1 0${NC}
-${GREEN}0 1 1 0 1 0 1 1 0 1${NC}
-${GREEN}1 0 1 0 1 1 0 1 0 1${NC}
-${GREEN}0 0 1 1 0 1 0 1 1 0${NC}
-"
+"     ◯
+    ╱ ╲
+   ╱   ╲
+  │     │
+   ╲   ╱
+    ╲ ╱"
+"     ◉
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"     ●
+    ╱ ╲
+   ╱   ╲
+  │  ◯  │
+   ╲   ╱
+    ╲ ╱"
+"    ◯◯
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"  ◯ ◯ ◯
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"   ◯ ◯
+    ╱ ╲
+   ╱ ● ╲
+  │     │
+   ╲   ╱
+    ╲ ╱"
     )
 
+    # Start background sound effect
     play_background_music
 
     i=0
     while kill -0 "$pid" 2>/dev/null; do
         clear
-        echo ""
         echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
         echo -e "${CYAN}║${NC}     $message                ${CYAN}║${NC}"
         echo -e "${CYAN}╚════════════════════════════════════╝${NC}\n"
-        
-        # Matrix animation
-        echo "${frames[$i]}"
+        echo -e "${MAGENTA}${frames[$i]}${NC}\n"
         
         # Progress indicator
-        progress_char=( "▓▓▓░░░" "▓▓▓▓░░" "▓▓▓▓▓░" "▓▓▓▓▓▓" "░▓▓▓▓▓" "░░▓▓▓▓" )
-        progress_idx=$((i % 6))
-        echo -e "\n${MAGENTA}${progress_char[$progress_idx]}${NC}"
+        progress_char=( "█" "▓" "▒" "░" )
+        progress_idx=$((i % 4))
+        echo -e "${GREEN}Loading... ${progress_char[$progress_idx]}${NC}"
         
         i=$(( (i + 1) % ${#frames[@]} ))
-        sleep 0.35
+        sleep 0.3
     done
 
     wait "$pid" || true
     stop_music
     
     clear
-    echo ""
     echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}    ${GREEN}[✓] TASK COMPLETE!${NC}          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}[✓] Task Complete!${NC}           ${CYAN}║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
     sleep 1
     tput cnorm 2>/dev/null || true
@@ -174,57 +145,6 @@ check_service() {
         || set_result "$2" "ERROR"
 }
 
-# ================= INSTALLATION STATUS CHECK =================
-
-check_installed_packages() {
-    clear
-    echo ""
-    echo -e "${CYAN}════════════════════════════════════${NC}"
-    echo -e "${CYAN}║${NC}   ${MAGENTA}INSTALLATION STATUS CHECK${NC}    ${CYAN}║${NC}"
-    echo -e "${CYAN}════════════════════════════════════${NC}"
-    echo ""
-    
-    packages=(
-        "apache2:Apache Web Server"
-        "php:PHP"
-        "openssh-server:SSH Server"
-        "mosquitto:Mosquitto MQTT"
-        "mariadb-server:MariaDB Database"
-        "docker.io:Docker"
-        "nodejs:Node.js"
-        "ufw:UFW Firewall"
-        "fail2ban:Fail2Ban"
-        "phpmyadmin:phpMyAdmin"
-    )
-    
-    installed_count=0
-    not_installed_count=0
-    
-    for package_info in "${packages[@]}"; do
-        package="${package_info%%:*}"
-        name="${package_info##*:}"
-        
-        if is_installed "$package"; then
-            echo -e "  ${GREEN}✓${NC} $name"
-            ((installed_count++))
-        else
-            echo -e "  ${RED}✗${NC} $name"
-            ((not_installed_count++))
-        fi
-    done
-    
-    echo ""
-    echo -e "${GREEN}Installed: $installed_count${NC}"
-    echo -e "${RED}Not Installed: $not_installed_count${NC}"
-    echo ""
-    echo -e "${CYAN}════════════════════════════════════${NC}"
-    echo ""
-    echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  Press ${GREEN}Enter${NC} to return to menu...     ${CYAN}║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
-    read -r
-}
-
 # ================= INSTALL FUNCTIONS =================
 
 install_apache() {
@@ -232,52 +152,34 @@ install_apache() {
     if ! is_installed apache2; then
         apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
         runner $! "Apache Installation"
-    else
-        echo -e "${YELLOW}Apache already installed${NC}"
     fi
     systemctl enable --now apache2 >> "$LOGFILE" 2>&1 || true
 }
 
 install_php() {
     echo -e "${GREEN}Installing PHP...${NC}"
-    if ! is_installed php; then
-        apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
-        runner $! "PHP Installation"
-    else
-        echo -e "${YELLOW}PHP already installed${NC}"
-    fi
+    apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
+    runner $! "PHP Installation"
 }
 
 install_ssh() {
     echo -e "${GREEN}Installing SSH...${NC}"
-    if ! is_installed openssh-server; then
-        apt install -y openssh-server >> "$LOGFILE" 2>&1 &
-        runner $! "SSH Installation"
-    else
-        echo -e "${YELLOW}SSH already installed${NC}"
-    fi
+    apt install -y openssh-server >> "$LOGFILE" 2>&1 &
+    runner $! "SSH Installation"
     systemctl enable --now ssh >> "$LOGFILE" 2>&1 || true
 }
 
 install_mosquitto() {
     echo -e "${GREEN}Installing Mosquitto...${NC}"
-    if ! is_installed mosquitto; then
-        apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-        runner $! "Mosquitto Installation"
-    else
-        echo -e "${YELLOW}Mosquitto already installed${NC}"
-    fi
+    apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
+    runner $! "Mosquitto Installation"
     systemctl enable --now mosquitto >> "$LOGFILE" 2>&1 || true
 }
 
 install_mariadb() {
     echo -e "${GREEN}Installing MariaDB...${NC}"
-    if ! is_installed mariadb-server; then
-        apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
-        runner $! "MariaDB Installation"
-    else
-        echo -e "${YELLOW}MariaDB already installed${NC}"
-    fi
+    apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
+    runner $! "MariaDB Installation"
     systemctl enable --now mariadb >> "$LOGFILE" 2>&1 || true
 
     echo "Database configuration:"
@@ -303,22 +205,14 @@ install_node_red() {
 
 install_phpmyadmin() {
     echo -e "${GREEN}Installing phpMyAdmin...${NC}"
-    if ! is_installed phpmyadmin; then
-        apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
-        runner $! "phpMyAdmin Installation"
-    else
-        echo -e "${YELLOW}phpMyAdmin already installed${NC}"
-    fi
+    apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
+    runner $! "phpMyAdmin Installation"
 }
 
 install_docker() {
     echo -e "${GREEN}Installing Docker...${NC}"
-    if ! is_installed docker.io; then
-        apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-        runner $! "Docker Installation"
-    else
-        echo -e "${YELLOW}Docker already installed${NC}"
-    fi
+    apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
+    runner $! "Docker Installation"
     systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
 }
 
@@ -326,13 +220,6 @@ install_security() {
     echo -e "${GREEN}Installing UFW + Fail2Ban...${NC}"
     apt install -y ufw fail2ban >> "$LOGFILE" 2>&1 &
     runner $! "Security Setup"
-
-    # Check if ufw is installed
-    if ! command -v ufw &> /dev/null; then
-        echo -e "${RED}[✗] UFW installation failed - command not found${NC}"
-        log "ERROR: UFW command not found after installation"
-        return 1
-    fi
 
     ufw default deny incoming || true
     ufw default allow outgoing || true
@@ -349,7 +236,6 @@ install_security() {
 
 show_menu() {
     clear
-    echo ""
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo -e "${CYAN}║${NC}    ${MAGENTA}DEBIAN INSTALLER MENU${NC}    ${CYAN}║${NC}"
     echo -e "${CYAN}════════════════════════════════════${NC}"
@@ -362,7 +248,6 @@ show_menu() {
     echo -e "${YELLOW}6)${NC} Docker"
     echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)"
     echo -e "${YELLOW}8)${NC} System Update"
-    echo -e "${YELLOW}9)${NC} Check Installation Status"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -384,7 +269,6 @@ show_menu() {
             6) install_docker ;;
             7) install_security ;;
             8) echo -e "${BLUE}Updating system...${NC}"; apt update >> "$LOGFILE" 2>&1 & runner $! "System Update" ;;
-            9) check_installed_packages ;;
             0) return 0 ;;
             *) echo -e "${RED}Invalid option: $choice${NC}"; sleep 2 ;;
         esac
@@ -410,9 +294,8 @@ done
 # ================= FINAL RESULTS =================
 
 clear
-echo ""
 echo -e "${CYAN}════════════════════════════════════${NC}"
-echo -e "${CYAN}║${NC}    ${GREEN}✓ INSTALLATION COMPLETE! ✓${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    ${GREEN}INSTALLATION COMPLETE!${NC}    ${CYAN}║${NC}"
 echo -e "${CYAN}════════════════════════════════════${NC}"
 echo ""
 
