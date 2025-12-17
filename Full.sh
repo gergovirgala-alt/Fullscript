@@ -6,18 +6,20 @@ RED="\033[1;31m"
 GREEN="\033[1;32m"
 YELLOW="\033[1;33m"
 BLUE="\033[1;34m"
+CYAN="\033[1;36m"
+MAGENTA="\033[1;35m"
 NC="\033[0m"
 
 set -Eeuo pipefail
 
 START_TIME=$(date +%s)
-echo "===== Script indult: $(date) =====" >> "$LOGFILE"
+echo "===== Script started: $(date) =====" >> "$LOGFILE"
 
-trap 'echo -e "${RED}Hiba történt! (sor: $LINENO)${NC}";
-      echo "HIBA $(date) sor: $LINENO" >> "$LOGFILE"' ERR
+trap 'echo -e "${RED}Error occurred! (line: $LINENO)${NC}";
+      echo "ERROR $(date) line: $LINENO" >> "$LOGFILE"' ERR
 
 if [[ $EUID -ne 0 ]]; then
-    echo -e "${RED}Root jogosultság szükséges!${NC}"
+    echo -e "${RED}Root privileges required!${NC}"
     exit 1
 fi
 
@@ -27,183 +29,382 @@ log() {
 
 ask_yes_no() {
     while true; do
-        read -rp "$1 (i/n): " yn
+        read -rp "$1 (y/n): " yn
         case $yn in
-            [iI]*) return 0 ;;
+            [yY]*) return 0 ;;
             [nN]*) return 1 ;;
-            *) echo "Csak i vagy n válasz megengedett!" ;;
+            *) echo "Only y or n allowed!" ;;
+        esac
+    done
+}
+
+ask_action() {
+    while true; do
+        echo ""
+        echo -e "${CYAN}Válassz műveletet:${NC}"
+        echo -e "${GREEN}1) Telepítés${NC}"
+        echo -e "${RED}2) Eltávolítás${NC}"
+        read -rp "Choice (1/2): " action
+        case $action in
+            1) echo "install"; return 0 ;;
+            2) echo "remove"; return 0 ;;
+            *) echo -e "${RED}Csak 1 vagy 2 lehet!${NC}" ;;
         esac
     done
 }
 
 is_installed() {
-    dpkg -l | grep -q "^ii  $1"
+    dpkg -l | grep -q "^ii  $1" || return 1
 }
 
-# ================= FUTÓ EMBER ANIMÁCIÓ =================
+# ================= ENHANCED ANIMATION WITH MUSIC =================
+
+play_background_music() {
+    for freq in 800 900 1000 900 800; do
+        printf '\a' >/dev/null 2>&1 || true
+        sleep 0.1
+    done &
+}
+
+stop_music() {
+    pkill -f "play_background_music" 2>/dev/null || true
+}
+
 runner() {
     local pid=$1
+    local message="${2:-Processing}"
     tput civis 2>/dev/null || true
 
     frames=(
-"  o
- /|\\
- / \\"
-" \\o
-  |\\
- / \\"
-"  o/
- /|
- / \\"
-"  o
- \\|/
- / \\"
+"     ◯
+    ╱ ╲
+   ╱   ╲
+  │     │
+   ╲   ╱
+    ╲ ╱"
+"     ◉
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"     ●
+    ╱ ╲
+   ╱   ╲
+  │  ◯  │
+   ╲   ╱
+    ╲ ╱"
+"    ◯◯
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"  ◯ ◯ ◯
+    ╱ ╲
+   ╱   ╲
+  │  ●  │
+   ╲   ╱
+    ╲ ╱"
+"   ◯ ◯
+    ╱ ╲
+   ╱ ● ╲
+  │     │
+   ╲   ╱
+    ╲ ╱"
     )
+
+    play_background_music
 
     i=0
     while kill -0 "$pid" 2>/dev/null; do
         clear
-        echo -e "${BLUE}Szerverek letöltése folyamatban...${NC}\n"
-        echo -e "${GREEN}${frames[$i]}${NC}"
+        echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
+        echo -e "${CYAN}║${NC}     $message                ${CYAN}║${NC}"
+        echo -e "${CYAN}╚════════════════════════════════════╝${NC}\n"
+        echo -e "${MAGENTA}${frames[$i]}${NC}\n"
+
+        progress_char=( "█" "▓" "▒" "░" )
+        progress_idx=$((i % 4))
+        echo -e "${GREEN}Loading... ${progress_char[$progress_idx]}${NC}"
+
         i=$(( (i + 1) % ${#frames[@]} ))
-        sleep 0.2
+        sleep 0.3
     done
 
+    wait "$pid" || true
+    stop_music
+
     clear
-    echo -e "${GREEN}[✓] Letöltés kész!${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}[✓] Task Complete!${NC}           ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
+    sleep 1
     tput cnorm 2>/dev/null || true
 }
 
 declare -A RESULTS
-set_result() { RESULTS["$1"]="$2"; }
+
+set_result() {
+    RESULTS["$1"]="$2"
+}
 
 check_service() {
     systemctl is-active --quiet "$1" \
-        && set_result "$2" "SIKERES" \
-        || set_result "$2" "HIBA"
+        && set_result "$2" "SUCCESS" \
+        || set_result "$2" "ERROR"
 }
 
-clear
-echo -e "${BLUE}Rendszer frissítése...${NC}"
-apt update >> "$LOGFILE" 2>&1 &
-runner $!
-
-# ================= TELEPÍTŐ FÜGGVÉNYEK =================
+# ================= INSTALL FUNCTIONS =================
 
 install_apache() {
-    echo -e "${GREEN}Apache telepítése...${NC}"
-    is_installed apache2 || {
+    echo -e "${GREEN}Installing Apache...${NC}"
+    if ! is_installed apache2; then
         apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
-        runner $!
-    }
-    systemctl enable --now apache2
+        runner $! "Apache Installation"
+    fi
+    systemctl enable --now apache2 >> "$LOGFILE" 2>&1 || true
 }
 
 install_php() {
-    echo -e "${GREEN}PHP telepítése...${NC}"
+    echo -e "${GREEN}Installing PHP...${NC}"
     apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
-    runner $!
+    runner $! "PHP Installation"
 }
 
 install_ssh() {
-    echo -e "${GREEN}SSH telepítése...${NC}"
+    echo -e "${GREEN}Installing SSH...${NC}"
     apt install -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $!
-    systemctl enable --now ssh
+    runner $! "SSH Installation"
+    systemctl enable --now ssh >> "$LOGFILE" 2>&1 || true
 }
 
 install_mosquitto() {
-    echo -e "${GREEN}Mosquitto telepítése...${NC}"
+    echo -e "${GREEN}Installing Mosquitto...${NC}"
     apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $!
-    systemctl enable --now mosquitto
+    runner $! "Mosquitto Installation"
+    systemctl enable --now mosquitto >> "$LOGFILE" 2>&1 || true
 }
 
 install_mariadb() {
-    echo -e "${GREEN}MariaDB telepítése...${NC}"
+    echo -e "${GREEN}Installing MariaDB...${NC}"
     apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $!
-    systemctl enable --now mariadb
+    runner $! "MariaDB Installation"
+    systemctl enable --now mariadb >> "$LOGFILE" 2>&1 || true
 
-    echo "Adatbázis beállítása:"
-    read -rp "Felhasználónév: " DB_USER
-    read -rsp "Jelszó: " DB_PASS; echo
-    read -rp "Adatbázis neve: " DB_NAME
+    echo "Database configuration:"
+    read -rp "Username: " DB_USER
+    read -rsp "Password: " DB_PASS; echo
+    read -rp "Database name: " DB_NAME
 
-    mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};"
-    mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';"
-    mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';"
-    mysql -e "FLUSH PRIVILEGES;"
+    mysql -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" || true
+    mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" || true
+    mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';" || true
+    mysql -e "FLUSH PRIVILEGES;" || true
+
+    echo -e "${GREEN}[✓] Database configured!${NC}"
 }
 
 install_node_red() {
-    echo -e "${GREEN}Node-RED telepítése...${NC}"
+    echo -e "${GREEN}Installing Node-RED...${NC}"
     command -v curl >/dev/null || apt install -y curl >> "$LOGFILE" 2>&1
-    curl -fsSL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered | bash
-    systemctl enable --now nodered.service
+    curl -fsSL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered | bash >> "$LOGFILE" 2>&1 &
+    runner $! "Node-RED Installation"
+    systemctl enable --now nodered.service >> "$LOGFILE" 2>&1 || true
 }
 
 install_phpmyadmin() {
-    echo -e "${GREEN}phpMyAdmin telepítése...${NC}"
+    echo -e "${GREEN}Installing phpMyAdmin...${NC}"
     apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $!
+    runner $! "phpMyAdmin Installation"
 }
 
 install_docker() {
-    echo -e "${GREEN}Docker telepítése...${NC}"
+    echo -e "${GREEN}Installing Docker...${NC}"
     apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $!
-    systemctl enable --now docker
+    runner $! "Docker Installation"
+    systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
 }
 
 install_security() {
-    echo -e "${GREEN}UFW + Fail2Ban telepítése...${NC}"
+    echo -e "${GREEN}Installing UFW + Fail2Ban...${NC}"
     apt install -y ufw fail2ban >> "$LOGFILE" 2>&1 &
-    runner $!
+    runner $! "Security Setup"
 
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow 22/tcp
-    ufw allow 80/tcp
-    ufw allow 1883/tcp
-    ufw --force enable
+    ufw default deny incoming || true
+    ufw default allow outgoing || true
+    ufw allow 22/tcp || true
+    ufw allow 80/tcp || true
+    ufw allow 1883/tcp || true
+    ufw --force enable || true
 
-    systemctl enable --now fail2ban
+    systemctl enable --now fail2ban >> "$LOGFILE" 2>&1 || true
+    echo -e "${GREEN}[✓] Security configured!${NC}"
 }
 
-# ================= MENÜ =================
+# ================= REMOVE FUNCTIONS =================
 
-clear
-echo "======================================"
-echo "        DEBIAN TELEPÍTŐ MENÜ"
-echo "======================================"
-echo "1) Node-RED"
-echo "2) Apache + PHP"
-echo "3) Mosquitto MQTT"
-echo "4) SSH"
-echo "5) phpMyAdmin"
-echo "6) Docker"
-echo "7) Biztonság (UFW + Fail2Ban)"
-echo "0) Kilépés"
-echo "======================================"
-echo "Több opció megadható (pl: 1 3 7)"
-read -rp "Választás: " choices
+remove_apache() {
+    systemctl stop apache2 2>/dev/null || true
+    apt purge -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
+    runner $! "Apache Removal"
+}
 
-for choice in $choices; do
-    case $choice in
-        1) install_node_red ;;
-        2) install_apache; install_php; ask_yes_no "MariaDB is kell?" && install_mariadb ;;
-        3) install_mosquitto ;;
-        4) install_ssh ;;
-        5) install_apache; install_php; install_phpmyadmin ;;
-        6) install_docker ;;
-        7) install_security ;;
-        0) exit 0 ;;
-        *) echo -e "${RED}Érvénytelen opció: $choice${NC}" ;;
-    esac
+remove_php() {
+    apt purge -y php\* >> "$LOGFILE" 2>&1 &
+    runner $! "PHP Removal"
+}
+
+remove_ssh() {
+    systemctl stop ssh 2>/dev/null || true
+    apt purge -y openssh-server >> "$LOGFILE" 2>&1 &
+    runner $! "SSH Removal"
+}
+
+remove_mosquitto() {
+    systemctl stop mosquitto 2>/dev/null || true
+    apt purge -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
+    runner $! "Mosquitto Removal"
+}
+
+remove_mariadb() {
+    systemctl stop mariadb 2>/dev/null || true
+    apt purge -y mariadb-server >> "$LOGFILE" 2>&1 &
+    runner $! "MariaDB Removal"
+}
+
+remove_phpmyadmin() {
+    apt purge -y phpmyadmin >> "$LOGFILE" 2>&1 &
+    runner $! "phpMyAdmin Removal"
+}
+
+remove_docker() {
+    systemctl stop docker 2>/dev/null || true
+    apt purge -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
+    runner $! "Docker Removal"
+}
+
+remove_nodered() {
+    systemctl stop nodered.service 2>/dev/null || true
+    apt purge -y nodered nodejs >> "$LOGFILE" 2>&1 &
+    runner $! "Node-RED Removal"
+}
+
+remove_security() {
+    ufw --force disable || true
+    systemctl stop fail2ban 2>/dev/null || true
+    apt purge -y ufw fail2ban >> "$LOGFILE" 2>&1 &
+    runner $! "Security Removal"
+}
+
+# ================= MAIN MENU LOOP =================
+
+show_menu() {
+    clear
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo -e "${CYAN}║${NC}    ${MAGENTA}DEBIAN INSTALLER MENU${NC}    ${CYAN}║${NC}"
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${YELLOW}1)${NC} Node-RED"
+    echo -e "${YELLOW}2)${NC} Apache + PHP"
+    echo -e "${YELLOW}3)${NC} Mosquitto MQTT"
+    echo -e "${YELLOW}4)${NC} SSH"
+    echo -e "${YELLOW}5)${NC} phpMyAdmin"
+    echo -e "${YELLOW}6)${NC} Docker"
+    echo -e "${YELLOW}7)${NC} Security (UFW + Fail2Ban)"
+    echo -e "${YELLOW}8)${NC} System Update"
+    echo -e "${RED}0)${NC} Exit"
+    echo -e "${CYAN}════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${GREEN}Multiple options allowed (e.g: 1 3 7)${NC}"
+    read -rp "Choice: " choices
+    echo ""
+
+    if [[ -z "$choices" ]]; then
+        return 1
+    fi
+
+    for choice in $choices; do
+        action=$(ask_action)
+
+        case $choice in
+            1)
+                [[ $action == "install" ]] && install_node_red || remove_nodered
+            ;;
+            2)
+                if [[ $action == "install" ]]; then
+                    install_apache
+                    install_php
+                    ask_yes_no "Install MariaDB too?" && install_mariadb
+                else
+                    remove_mariadb
+                    remove_php
+                    remove_apache
+                fi
+            ;;
+            3)
+                [[ $action == "install" ]] && install_mosquitto || remove_mosquitto
+            ;;
+            4)
+                [[ $action == "install" ]] && install_ssh || remove_ssh
+            ;;
+            5)
+                if [[ $action == "install" ]]; then
+                    install_apache
+                    install_php
+                    install_phpmyadmin
+                else
+                    remove_phpmyadmin
+                fi
+            ;;
+            6)
+                [[ $action == "install" ]] && install_docker || remove_docker
+            ;;
+            7)
+                [[ $action == "install" ]] && install_security || remove_security
+            ;;
+            8)
+                if [[ $action == "install" ]]; then
+                    echo -e "${BLUE}Updating system...${NC}"
+                    apt update >> "$LOGFILE" 2>&1 &
+                    runner $! "System Update"
+                else
+                    echo -e "${YELLOW}System update cannot be removed.${NC}"
+                    sleep 2
+                fi
+            ;;
+            0) return 0 ;;
+            *)
+                echo -e "${RED}Invalid option: $choice${NC}"
+                sleep 2
+            ;;
+        esac
+    done
+
+    return 1
+}
+
+# ================= LOOP MENU UNTIL EXIT =================
+
+while true; do
+    if show_menu; then
+        break
+    fi
+
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}  Press ${GREEN}Enter${NC} to return to menu...     ${CYAN}║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════╝${NC}"
+    read -r
 done
 
-# ================= TESZT & ELLENŐRZÉS =================
+# ================= FINAL RESULTS =================
+
+clear
+echo -e "${CYAN}════════════════════════════════════${NC}"
+echo -e "${CYAN}║${NC}    ${GREEN}INSTALLATION COMPLETE!${NC}    ${CYAN}║${NC}"
+echo -e "${CYAN}════════════════════════════════════${NC}"
+echo ""
 
 check_service apache2 "Apache2"
 check_service ssh "SSH"
@@ -213,25 +414,28 @@ check_service mariadb "MariaDB"
 check_service docker "Docker"
 check_service fail2ban "Fail2Ban"
 
-clear
-echo "======================================"
-echo "        TELEPÍTÉSI EREDMÉNYEK"
-echo "======================================"
+echo -e "${YELLOW}Installation Results:${NC}"
 for key in "${!RESULTS[@]}"; do
-    echo "$key : ${RESULTS[$key]}"
+    if [[ "${RESULTS[$key]}" == "SUCCESS" ]]; then
+        echo -e "  ${GREEN}✓${NC} $key : ${GREEN}${RESULTS[$key]}${NC}"
+    else
+        echo -e "  ${RED}✗${NC} $key : ${RED}${RESULTS[$key]}${NC}"
+    fi
 done
 
-echo
-echo "Nyitott portok:"
-ss -tuln | grep -E ':(22|80|1883)' || echo "Nincs releváns port"
+echo ""
+echo -e "${YELLOW}Open ports:${NC}"
+ss -tuln | grep -E ':(22|80|1883)' || echo "  No relevant ports"
 
-echo
-echo "Apache HTTP teszt:"
-curl -Is http://localhost | head -n 1 || echo "Apache nem válaszol"
+echo ""
+echo -e "${YELLOW}Apache HTTP test:${NC}"
+curl -Is http://localhost 2>/dev/null | head -n 1 || echo "  Apache not responding"
 
 END_TIME=$(date +%s)
-echo
-echo -e "${GREEN}Script futási ideje: $((END_TIME - START_TIME)) mp${NC}"
-echo -e "${YELLOW}Megjegyzés:${NC} Nyitott szolgáltatások esetén tűzfal használata ajánlott."
+echo ""
+echo -e "${GREEN}Script execution time: $((END_TIME - START_TIME)) seconds${NC}"
+echo -e "${YELLOW}Note:${NC} Firewall recommended for open services."
+echo ""
 
-log "Script sikeresen lefutott"
+log "Script completed successfully"
+
