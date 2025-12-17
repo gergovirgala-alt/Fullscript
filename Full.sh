@@ -161,37 +161,35 @@ check_service() {
 
 install_apache() {
     echo -e "${GREEN}Installing Apache...${NC}"
-    if ! is_installed apache2; then
-        apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
-        runner $! "Apache Installation"
-    fi
+    apt install -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
+    runner $! "Installing Apache..."
     systemctl enable --now apache2 >> "$LOGFILE" 2>&1 || true
 }
 
 install_php() {
     echo -e "${GREEN}Installing PHP...${NC}"
     apt install -y php php-mbstring php-zip php-gd php-json php-curl php-mysql >> "$LOGFILE" 2>&1 &
-    runner $! "PHP Installation"
+    runner $! "Installing PHP..."
 }
 
 install_ssh() {
     echo -e "${GREEN}Installing SSH...${NC}"
     apt install -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $! "SSH Installation"
+    runner $! "Installing SSH..."
     systemctl enable --now ssh >> "$LOGFILE" 2>&1 || true
 }
 
 install_mosquitto() {
     echo -e "${GREEN}Installing Mosquitto...${NC}"
     apt install -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $! "Mosquitto Installation"
+    runner $! "Installing Mosquitto..."
     systemctl enable --now mosquitto >> "$LOGFILE" 2>&1 || true
 }
 
 install_mariadb() {
     echo -e "${GREEN}Installing MariaDB...${NC}"
     apt install -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $! "MariaDB Installation"
+    runner $! "Installing MariaDB..."
     systemctl enable --now mariadb >> "$LOGFILE" 2>&1 || true
 
     echo "Database configuration:"
@@ -203,45 +201,32 @@ install_mariadb() {
     mysql -e "CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';" || true
     mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';" || true
     mysql -e "FLUSH PRIVILEGES;" || true
-
-    echo -e "${GREEN}[✓] Database configured!${NC}"
-}
-
-install_node_red() {
-    echo -e "${GREEN}Installing Node-RED...${NC}"
-    command -v curl >/dev/null || apt install -y curl >> "$LOGFILE" 2>&1
-    curl -fsSL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered | bash >> "$LOGFILE" 2>&1 &
-    runner $! "Node-RED Installation"
-    systemctl enable --now nodered.service >> "$LOGFILE" 2>&1 || true
 }
 
 install_phpmyadmin() {
     echo -e "${GREEN}Installing phpMyAdmin...${NC}"
     apt install -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $! "phpMyAdmin Installation"
+    runner $! "Installing phpMyAdmin..."
 }
 
 install_docker() {
     echo -e "${GREEN}Installing Docker...${NC}"
     apt install -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $! "Docker Installation"
+    runner $! "Installing Docker..."
     systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
 }
 
 install_security() {
     echo -e "${GREEN}Installing UFW + Fail2Ban...${NC}"
     apt install -y ufw fail2ban >> "$LOGFILE" 2>&1 &
-    runner $! "Security Setup"
-
+    runner $! "Setting up Security..."
     ufw default deny incoming || true
     ufw default allow outgoing || true
     ufw allow 22/tcp || true
     ufw allow 80/tcp || true
     ufw allow 1883/tcp || true
     ufw --force enable || true
-
     systemctl enable --now fail2ban >> "$LOGFILE" 2>&1 || true
-    echo -e "${GREEN}[✓] Security configured!${NC}"
 }
 
 # ================= REMOVE FUNCTIONS =================
@@ -249,54 +234,54 @@ install_security() {
 remove_apache() {
     systemctl stop apache2 2>/dev/null || true
     apt purge -y apache2 libapache2-mod-php >> "$LOGFILE" 2>&1 &
-    runner $! "Apache Removal"
+    runner $! "Removing Apache..."
 }
 
 remove_php() {
     apt purge -y php\* >> "$LOGFILE" 2>&1 &
-    runner $! "PHP Removal"
+    runner $! "Removing PHP..."
 }
 
 remove_ssh() {
     systemctl stop ssh 2>/dev/null || true
     apt purge -y openssh-server >> "$LOGFILE" 2>&1 &
-    runner $! "SSH Removal"
+    runner $! "Removing SSH..."
 }
 
 remove_mosquitto() {
     systemctl stop mosquitto 2>/dev/null || true
     apt purge -y mosquitto mosquitto-clients >> "$LOGFILE" 2>&1 &
-    runner $! "Mosquitto Removal"
+    runner $! "Removing Mosquitto..."
 }
 
 remove_mariadb() {
     systemctl stop mariadb 2>/dev/null || true
     apt purge -y mariadb-server >> "$LOGFILE" 2>&1 &
-    runner $! "MariaDB Removal"
+    runner $! "Removing MariaDB..."
 }
 
 remove_phpmyadmin() {
     apt purge -y phpmyadmin >> "$LOGFILE" 2>&1 &
-    runner $! "phpMyAdmin Removal"
+    runner $! "Removing phpMyAdmin..."
 }
 
 remove_docker() {
     systemctl stop docker 2>/dev/null || true
     apt purge -y docker.io docker-compose >> "$LOGFILE" 2>&1 &
-    runner $! "Docker Removal"
+    runner $! "Removing Docker..."
 }
 
 remove_nodered() {
     systemctl stop nodered.service 2>/dev/null || true
     apt purge -y nodered nodejs >> "$LOGFILE" 2>&1 &
-    runner $! "Node-RED Removal"
+    runner $! "Removing Node-RED..."
 }
 
 remove_security() {
     ufw --force disable || true
     systemctl stop fail2ban 2>/dev/null || true
     apt purge -y ufw fail2ban >> "$LOGFILE" 2>&1 &
-    runner $! "Security Removal"
+    runner $! "Removing Security..."
 }
 
 # ================= MAIN MENU LOOP =================
@@ -307,15 +292,15 @@ show_menu() {
     echo -e "${CYAN}║${NC}    ${MAGENTA}DEBIAN INSTALLER MENU${NC}    ${CYAN}║${NC}"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
-    echo -e "${YELLOW}1)${NC} Node-RED                 (Telepítés / Törlés)"
-    echo -e "${YELLOW}2)${NC} Apache + PHP             (Telepítés / Törlés)"
-    echo -e "${YELLOW}3)${NC} Mosquitto MQTT           (Telepítés / Törlés)"
-    echo -e "${YELLOW}4)${NC} SSH                      (Telepítés / Törlés)"
-    echo -e "${YELLOW}5)${NC} MariaDB                   (Telepítés / Törlés)"
-    echo -e "${YELLOW}6)${NC} phpMyAdmin               (Telepítés / Törlés)"
-    echo -e "${YELLOW}7)${NC} Docker                   (Telepítés / Törlés)"
-    echo -e "${YELLOW}8)${NC} Security (UFW + Fail2Ban)(Telepítés / Törlés)"
-    echo -e "${YELLOW}9)${NC} System Update            (Telepítés)"
+    echo -e "${YELLOW}1)${NC} Node-RED"
+    echo -e "${YELLOW}2)${NC} Apache + PHP"
+    echo -e "${YELLOW}3)${NC} Mosquitto MQTT"
+    echo -e "${YELLOW}4)${NC} SSH"
+    echo -e "${YELLOW}5)${NC} MariaDB"
+    echo -e "${YELLOW}6)${NC} phpMyAdmin"
+    echo -e "${YELLOW}7)${NC} Docker"
+    echo -e "${YELLOW}8)${NC} Security (UFW + Fail2Ban)"
+    echo -e "${YELLOW}9)${NC} System Update"
     echo -e "${RED}0)${NC} Exit"
     echo -e "${CYAN}════════════════════════════════════${NC}"
     echo ""
@@ -331,7 +316,7 @@ show_menu() {
         if [[ $choice -ne 9 ]]; then
             ask_action
         else
-            ACTION="install"  # System update csak telepítés
+            ACTION="install"
         fi
 
         case $choice in
@@ -368,7 +353,7 @@ show_menu() {
             9)
                 echo -e "${BLUE}Updating system...${NC}"
                 apt update >> "$LOGFILE" 2>&1 &
-                runner $! "System Update"
+                runner $! "Updating system..."
             ;;
             0) return 0 ;;
             *)
@@ -377,7 +362,6 @@ show_menu() {
             ;;
         esac
     done
-
     return 1
 }
 
@@ -387,7 +371,6 @@ while true; do
     if show_menu; then
         break
     fi
-
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║${NC}  Press ${GREEN}Enter${NC} to return to menu...     ${CYAN}║${NC}"
